@@ -51,7 +51,7 @@ def main() -> None:
             epoch_train_losses, epoch_val_losses = train(net_copy, trainloader, valloader, epochs=5)
             print(f"Client: {client_idx:>2} Train losses: {epoch_train_losses}, Val losses: {epoch_val_losses}")
             
-            nets.append((get_parameters(net_copy), client_idx))
+            nets.append((get_parameters(net_copy), 1))
         
         set_parameters(net, aggregate(nets))
 
