@@ -46,13 +46,12 @@ def train(
             batch_train_losses.append(loss.item())
         epoch_train_losses.append(sum(batch_train_losses) / len(batch_train_losses))
         epoch_val_losses.append(test(net, valloader))
-        print(f"Epoch completed in {time.time()-tstart:.2f} seconds with"
-            + f"{len(trainloader)} batches of batch size {len(trainloader[0])}",
-        )
-        print(f"Train loss for epoch {epoch}: {epoch_train_losses[-1]:.2f}")
-        print(
-            f"Validation loss for epoch {epoch}: {epoch_val_losses[-1][0]:.2f}",
-        )
+        # print(f"Epoch completed in {time.time()-tstart:.2f} seconds with"
+        #     + f"{len(trainloader)} batches of batch size {len(trainloader[0])}")
+        # print(f"Train loss for epoch {epoch}: {epoch_train_losses[-1]:.2f}")
+        # print(
+        #     f"Validation loss for epoch {epoch}: {epoch_val_losses[-1][0]:.2f}",
+        # )
     return epoch_train_losses, epoch_val_losses
 
 

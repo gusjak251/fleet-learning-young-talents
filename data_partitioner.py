@@ -4,7 +4,9 @@ from enum import Enum
 
 from zod import constants
 from zod import ZodFrames
+from metadata_loader import load_metadata
 import numpy as np
+import pandas as pd
 import json
 
 random.seed(2023)
@@ -14,6 +16,7 @@ class PartitionStrategy(Enum):
 
     RANDOM = "random"
     LOCATION = "location"
+    ROAD_CONDITION = "road_condition"
 
 # load data based on cid and strategy
 def partition_train_data(
@@ -51,6 +54,8 @@ def partition_train_data(
         training_frames_all, int(len(training_frames_all) * percentage_of_data)
     )
 
+    print(len(sampled_training_frames))
+
     if strat == PartitionStrategy.RANDOM:
         cid_partitions = {}
         random.shuffle(sampled_training_frames)
@@ -62,6 +67,19 @@ def partition_train_data(
 
     if strat == PartitionStrategy.LOCATION:
         pass
+
+    if strat == PartitionStrategy.ROAD_CONDITION:
+        cid_partitions = {}
+        metadata = load_metadata(zod_frames, sampled_training_frames)
+        # print(metadata['frame_id'].value_counts())
+        sampled_metadata = metadata.groupby('road_condition', group_keys=False).apply(lambda x: x.sample(frac=0.8))
+        sampled_frames = sampled_metadata['frame_id'].values
+        # print(sampled_metadata['frame_id'].value_counts())
+        sublist_size = len(sampled_frames) // no_clients
+        for i in range(no_clients):
+            cid_partitions[str(i)] = sampled_frames[
+                i * sublist_size : (i + 1) * sublist_size
+            ]
 
     return cid_partitions
 
