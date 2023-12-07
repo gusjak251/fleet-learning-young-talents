@@ -1,7 +1,6 @@
 """Partition data and distribute to clients."""
 import random
 from enum import Enum
-
 from zod import constants
 from zod import ZodFrames
 from metadata_loader import load_metadata
@@ -53,8 +52,6 @@ def partition_train_data(
     sampled_training_frames = random.sample(
         training_frames_all, int(len(training_frames_all) * percentage_of_data)
     )
-
-    print(len(sampled_training_frames))
 
     if strat == PartitionStrategy.RANDOM:
         cid_partitions = {}
