@@ -16,13 +16,14 @@ import matplotlib.pyplot as plt
 import torch.nn as nn
 import os
 from datetime import datetime
+from fleet_aggregators import BaseStrategy
 from data_partitioner import PartitionStrategy, partition_train_data
 
 
-GLOBAL_ROUNDS = 2 #40
+GLOBAL_ROUNDS = 10 #40
 NO_CLIENTS = 40 #40
 CLIENTS_PER_ROUND = 10 #10
-PERCENT_DATA = 0.05
+PERCENT_DATA = 0.1
 LR = 0.01
 
 
@@ -52,7 +53,7 @@ def main() -> None:
     # partitions takes the data and splits it into partitions
 
     partitions = partition_train_data(
-        PartitionStrategy.RANDOM,
+        PartitionStrategy.LOCATION,
         NO_CLIENTS,
         zod_frames,
         PERCENT_DATA
@@ -74,18 +75,20 @@ def main() -> None:
 
     _, testloader = load_datasets(zod_frames.get_split(constants.VAL), zod_frames)
     round_test_losses = []
-    batch_test_losses_plot=[]
-    batch_train_losses_plot=[]
-    batch_valid_losses_plot=[]
+    batch_test_losses = []
+    batch_train_losses = []
+    batch_valid_losses_plot = []
+
+    strategy = BaseStrategy()
 
     for round in range(1, GLOBAL_ROUNDS+1):
         print("ROUND", round)
         selected = select_client(clients)
         nets = []
-        # takes each klient and trains them
+        # takes each client and trains them
 
         for client_idx in selected:
-            net_copy = Net().to(device)
+            net_copy = net.to(device)
 
             net_copy.load_state_dict(net.state_dict())
             net_copy.train()
@@ -94,15 +97,24 @@ def main() -> None:
 
             # net_copy is the model, trainloader is the data, valloader ia the validation data
             epoch_train_losses, epoch_val_losses = train(net_copy, trainloader, valloader, epochs=5)
-            print(f"Client: {client_idx:>2} Train losses: {epoch_train_losses}, Val losses: {epoch_val_losses}")
+            for elements in range(len(epoch_val_losses)):
+                val_loss = epoch_val_losses[elements][0] if epoch_val_losses else None
+                batch_valid_losses_plot.append(val_loss)
+                print(f"Val losses: {val_loss}")
+            print(f"Client: {client_idx:>2} Train losses: {epoch_train_losses}")
+            # print(f"Client: {client_idx:>2} Train losses: {epoch_train_losses}, Val losses: {epoch_val_losses}")
 
-            batch_train_losses_plot.append(epoch_train_losses)
-            batch_valid_losses_plot.append(epoch_val_losses)
+            batch_train_losses.append(sum(epoch_train_losses)/len(epoch_train_losses))
+            # batch_valid_losses_plot.append(epoch_val_losses)
             # this takes the parameters of the model and returns them as a list
             nets.append((get_parameters(net_copy), 1))
 
         # havent we already evaluated the model on the test data?
         # yes, but we want to see how the model improves over time
+        agg_weights = strategy.aggregate_fit_fedavg(nets)
+        
+        set_parameters(net, agg_weights[0])
+
         net.eval()
         batch_test_losses = []
 
@@ -112,14 +124,12 @@ def main() -> None:
             pred = net(data)
             batch_test_losses.append(net.loss_fn(pred, target).item())
 
-        batch_test_losses_plot.append(batch_test_losses)
-
 
         round_test_losses.append(sum(batch_test_losses)/len(batch_test_losses))
         print(f"Test loss: {round_test_losses[-1]:.4f}")
         # with global round on x-axis and round test losses y-axis
-    save_loss_data(batch_test_losses_plot, batch_train_losses_plot)
-    plot_accuracy(batch_test_losses_plot, batch_train_losses_plot, round_test_losses, batch_valid_losses_plot)
+    save_loss_data(batch_test_losses, batch_train_losses)
+    plot_accuracy(batch_test_losses, batch_train_losses, round_test_losses, batch_valid_losses_plot)
     # print(batch_train_losses_plot)
 
 
