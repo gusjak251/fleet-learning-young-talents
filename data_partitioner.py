@@ -3,6 +3,8 @@ import random
 from enum import Enum
 from zod import constants
 from zod import ZodFrames
+import matplotlib.pyplot as plt
+from sklearn.cluster import AgglomerativeClustering
 from metadata_loader import load_metadata
 import numpy as np
 import pandas as pd
@@ -63,12 +65,22 @@ def partition_train_data(
             ]
 
     if strat == PartitionStrategy.LOCATION:
-        pass
+        cid_partitions = {}
+        metadata = load_metadata(zod_frames, sampled_training_frames)
+        clustering = AgglomerativeClustering(n_clusters=no_clients)
+        metadata['cluster'] = clustering.fit_predict(metadata[['longitude', 'latitude']])
+        clusters = metadata['cluster'].unique()
+        for i in clusters:
+            frames = metadata[metadata['cluster'] == i]['frame_id'].values
+            cid_partitions[str(i)] = frames
+        plt.figure()
+        plt.scatter(metadata['longitude'], metadata['latitude'], c=metadata['cluster'].astype(float))
+        plt.savefig('clusters.png')
+
 
     if strat == PartitionStrategy.ROAD_CONDITION:
         cid_partitions = {}
         metadata = load_metadata(zod_frames, sampled_training_frames)
-        # print(metadata['frame_id'].value_counts())
         sampled_metadata = metadata.groupby('road_condition', group_keys=False).apply(lambda x: x.sample(frac=0.8))
         sampled_frames = sampled_metadata['frame_id'].values
         # print(sampled_metadata['frame_id'].value_counts())
