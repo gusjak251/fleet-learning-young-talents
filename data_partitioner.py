@@ -3,7 +3,6 @@ import random
 from enum import Enum
 from zod import constants
 from zod import ZodFrames
-import matplotlib.pyplot as plt
 from sklearn.cluster import AgglomerativeClustering
 from metadata_loader import load_metadata
 import numpy as np
@@ -73,9 +72,6 @@ def partition_train_data(
         for i in clusters:
             frames = metadata[metadata['cluster'] == i]['frame_id'].values
             cid_partitions[str(i)] = frames
-        plt.figure()
-        plt.scatter(metadata['longitude'], metadata['latitude'], c=metadata['cluster'].astype(float))
-        plt.savefig('clusters.png')
 
 
     if strat == PartitionStrategy.ROAD_CONDITION:
