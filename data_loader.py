@@ -1,7 +1,7 @@
 """Client side data loader."""
 from typing import Tuple
 
-from data_partitioner import load_ground_truth
+from data_partitioner import load_ground_truth, is_valid_frame
 from zod_dataset import ZodDataset
 from torch import Generator
 from torch.utils.data import DataLoader, RandomSampler, random_split
@@ -10,9 +10,13 @@ from zod import ZodFrames
 
 
 def load_datasets(
-    partitioned_frame_ids: list, zod_frames: ZodFrames
+    partitioned_frame_ids: list, 
+    zod_frames: ZodFrames
 ) -> Tuple[DataLoader, DataLoader]:
     """Get train and validation dataloaer."""
+   
+
+    
     seed = 42
     transform = (
         transforms.Compose(
@@ -22,28 +26,41 @@ def load_datasets(
             ]
         )
     )
+    
+    ground_truth = load_ground_truth("/mnt/ZOD/ground_truth.json")
+
+    partitioned_frame_ids = [idx for idx in partitioned_frame_ids if is_valid_frame(idx, ground_truth)]
 
     trainset = ZodDataset(
         zod_frames=zod_frames,
         frames_id_set=partitioned_frame_ids,
-        stored_ground_truth=load_ground_truth("/mnt/ZOD/ground_truth.json"),
+        stored_ground_truth=ground_truth,
         transform=transform,
     )
 
     # Split each partition into train/val and create DataLoader
     len_test = int(len(trainset) * 0.1)
     len_train = int(len(trainset) - len_test)
+    print(len_test)
+    print(len_train)
 
     lengths = [len_train, len_test]
     ds_train, ds_test = random_split(trainset, lengths, Generator().manual_seed(seed))
-    train_sampler = RandomSampler(ds_train)
+    if len(ds_train) > 0:
+        train_sampler = RandomSampler(ds_train)
+        # Rest of your code using train_sampler
+    else:
+        print("Training dataset is empty. Check your data splitting process.")
+
     trainloader = DataLoader(
         ds_train,
         batch_size=32,
         shuffle=False,
         num_workers=0,
-        sampler=train_sampler,
+        # sampler=train_sampler,
+
     )
     testloader = DataLoader(ds_test, batch_size=32, num_workers=0)
 
     return trainloader, testloader
+
