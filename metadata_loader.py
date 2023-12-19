@@ -14,8 +14,8 @@ def load_all_metadata(zod_frames: ZodFrames, sampled_frames: list) -> pd.DataFra
             cars = pd.concat([cars, df], axis=0)
     return cars
 
-def save_metadata(data: pd.DataFrame) -> None:
-    data.to_csv('metadata.csv', index=False)
+def save_metadata(data: pd.DataFrame, path: str) -> None:
+    data.to_csv(path, index=False)
 
 def load_metadata(zod_frames: ZodFrames, sampled_frames: list) -> pd.DataFrame:
     cars = []

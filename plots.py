@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 import numpy as np
 import json
+from data_partitioner import PartitionStrategy
 
 
 def plot_location(dir: str, metadata: pd.DataFrame):
@@ -20,7 +21,7 @@ def plot_location(dir: str, metadata: pd.DataFrame):
     plt.savefig(f"{dir}/location.png")
 
 
-def save_loss_data(batch_test_losses, batch_train_losses, path: str):
+def save_loss_data(batch_test_losses, batch_train_losses, strategy, path: str):
     # train_values = []
     # for epoch in batch_train_losses:
     #     mean = 0
@@ -33,9 +34,17 @@ def save_loss_data(batch_test_losses, batch_train_losses, path: str):
     # for epoch in batch_test_losses:
     #     for round in epoch:
     #         test_values.append(round)
+    strat = 'default'
+    if strategy == PartitionStrategy.RANDOM:
+        strat = 'random'
+    if strategy == PartitionStrategy.LOCATION:
+        strat = 'location'
+    if strategy == PartitionStrategy.ROAD_CONDITION:
+        strat = 'road_condition'
     output = {
         'test_loss': batch_test_losses,
-        'train_loss': batch_train_losses
+        'train_loss': batch_train_losses,
+        'strategy': strat
     }
     with open(path, 'w') as outfile:
         json.dump(output, outfile, indent=4)
