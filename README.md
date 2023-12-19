@@ -19,7 +19,7 @@ In this project, the goal has been to minimize the loss of their ML model by imp
 **Installation**
 
 1.Clone the repository
-2.Open the folder
+2.Open the directory in a terminal
 
     cd fleet-learning-young-talents
 
@@ -71,7 +71,7 @@ The outliers have been identified by the isolation forest algorithm from the sci
 
 Visualization of the training loss, validation loss & test loss from the model
 
-*Note: test & validation loss graphs are not included in this image*
+*Note: validation loss is not included in this image*
 
 **To do:**
 

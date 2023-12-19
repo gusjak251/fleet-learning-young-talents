@@ -14,19 +14,19 @@ def load_session_data(session: str):
     load_df = pd.read_csv(f'sessions/{session}/metadata.csv')
     with open(f'sessions/{session}/loss.json', 'r') as openfile:
         loss_data = json.load(openfile)
-    load_loss_data_df = pd.DataFrame({ 'loss': loss_data['train_loss']})
-    load_test_data_df=pd.DataFrame({"test":loss_data["test_loss"]})
+    load_loss_data_df = pd.DataFrame({ 'Train loss': loss_data['train_loss']})
+    load_test_data_df=pd.DataFrame({"Test loss":loss_data["test_loss"]})
     return load_df, load_loss_data_df, load_test_data_df
 
 
-df, loss_data_df,load_test_data_df = load_session_data(select_session)
+df, loss_data_df,test_loss_data_df = load_session_data(select_session)
 # df = pd.read_csv(f'{select_session}/metadata.csv')
 # with open(f'{select_session}/loss.json', 'r') as openfile:
 #     loss_data = json.load(openfile)
 # loss_data_df = pd.DataFrame({ 'loss': loss_data['train_loss']})
 
-loss_fig = px.line(loss_data_df, title='Loss graph')
-
+loss_fig = px.line(loss_data_df, title='Loss graph',labels={"index": "Epoch", "value": "Loss"})
+loss_fig.add_trace(px.line(test_loss_data_df,color_discrete_sequence=["orange"]).data[0])
 
 # Remove unnecessary columns
 df = df.drop(columns=['time', 'frame_id'])
@@ -167,7 +167,7 @@ fig5 = px.choropleth(df1, locations="Iso_alpha", color="Anomalies",
                     title="Amount of Anomalies per country",projection="natural earth",scope="europe")
 
 fig5.update_traces(
-    hovertemplate='<b>%{text}</b><br>Amount of Anomalies: %{z}',
+    hovertemplate='<b>%{location}</b><br>Amount of Anomalies: %{z}',
     text=df1['Country']
 )
 
@@ -207,15 +207,15 @@ kalk1=1-kalk
 string3=("Anomalies: "+str(kalk)+"%")
 string4=("Normal: "+str(kalk1)+"%")
 lista1=[string1,string2,string3,string4]
-räknare=0
+counter=0
 for i in lista1:
    geo_fig.add_annotation(
    text=i,
     x=.01,
-    y=0.95-(räknare/15),
+    y=0.95-(counter/15),
     showarrow=False,
     font=dict(size=14, color="black"))
-   räknare +=1
+   counter +=1
 
 
 
@@ -243,6 +243,8 @@ for i in lista1:
 checklist_remove = ['num_vehicles', 'num_pedestrians', 'num_traffic_lights', 'anomaly_scores', 'anomaly']
 checklist_items = [column for column in df.columns if column not in checklist_remove]
 
+button_style = style={'width': '30%', 'margin-bottom': '5px', 'margin-top': '5px', 'margin-left': 'auto', 'margin-right': 'auto', 'padding': '12px'}
+
 #Layout för pie charts och densitymap
 app.layout = html.Div([
     # First row
@@ -250,79 +252,102 @@ app.layout = html.Div([
         dcc.Dropdown(sessions, sessions[-1], id='session', style={'width': '70%', 'margin-left': 'auto', 'margin-right': 'auto', 'margin-top': '32px'}),
         dcc.Graph(id='pie-chart', figure=fig),
         dash.html.H3(children='Categories', style={'width': '70%', 'margin-left': 'auto', 'margin-right': 'auto'}),
-        dcc.Checklist(id='checklist', options=checklist_items, value=[checklist_items[0]], inline=True, style={'font-size': '16pt', 'width' : '70%', 'margin-left': 'auto', 'margin-right': 'auto'}),
-        dcc.Dropdown(['Show all', 'Show inliers', 'Show outliers'], 'Show all', id='dropdown', style={'width': '70%', 'margin-left': 'auto', 'margin-right': 'auto', 'margin-top': '32px'}),
+        dcc.Checklist(id='checklist', options=checklist_items, value=[checklist_items[0]], inline=True, style={'font-size': '16pt', 'width' : '70%', 'margin-left': 'auto', 'margin-right': 'auto', 'margin-bottom': '32px'}),
+        # dcc.Dropdown(['Show all', 'Show inliers', 'Show outliers'], 'Show all', id='dropdown', style={'width': '70%', 'margin-left': 'auto', 'margin-right': 'auto', 'margin-top': '32px'}),
         # dcc.Graph(id='geo-map', figure=geo_fig),
-        html.Button('Datapoints', id='btn_nclicks_1', n_clicks=0),
-        html.Button('Anomalies per country', id='btn_nclicks_2', n_clicks=0),
-        html.Button('Anomalies coords', id='btn_nclicks_3', n_clicks=0),
-        html.Div(id='container-button-timestamp'),
+        html.Button('Datapoints', id='btn_nclicks_1', n_clicks=0, style=button_style),
+        html.Button('Anomalies per country', id='btn_nclicks_2', n_clicks=0, style=button_style),
+        html.Button('Anomalies coords', id='btn_nclicks_3', n_clicks=0, style=button_style),
+        dcc.Graph(id='container-button-timestamp', figure=fig4),
         dcc.Graph(id='loss-graph', figure=loss_fig)
     ], style={'display': 'flex', 'flex-direction' : 'column'}),
 ])
 
 
-@callback(
-    Output('container-button-timestamp', 'children'),
-    Input('btn_nclicks_1', 'n_clicks'),
-    Input('btn_nclicks_2', 'n_clicks'),
-    Input('btn_nclicks_3', 'n_clicks'),
+# @callback(
+#     Output('container-button-timestamp', 'children'),
+#     Input('btn_nclicks_1', 'n_clicks'),
+#     Input('btn_nclicks_2', 'n_clicks'),
+#     Input('btn_nclicks_3', 'n_clicks'),
+#     prevent_initial_call=True
+# )
+
+@app.callback(
+    [
+        Output('container-button-timestamp', 'figure'),
+        Output('pie-chart', 'figure'),
+        # Output('geo-map', 'figure'),
+        Output('loss-graph', 'figure')
+    ],
+    [
+        Input('pie-chart', 'clickData'),
+        Input('checklist', 'value'),
+        # Input('dropdown', 'value'),
+        Input('session', 'value'),
+        Input('btn_nclicks_1', 'n_clicks'),
+        Input('btn_nclicks_2', 'n_clicks'),
+        Input('btn_nclicks_3', 'n_clicks'),
+    ],
     prevent_initial_call=True
 )
 
 
+
+
 #Callback för varje pie chart
-@app.callback(
-    [Output('pie-chart', 'figure'), Output('geo-map', 'figure'), Output('loss-graph', 'figure')],
-    [Input('pie-chart', 'clickData'), Input('checklist', 'value'), Input('dropdown', 'value'), Input('session', 'value')]
-)
+# @app.callback(
+#     [Output('pie-chart', 'figure'), Output('geo-map', 'figure'), Output('loss-graph', 'figure')],
+#     [Input('pie-chart', 'clickData'), Input('checklist', 'value'), Input('dropdown', 'value'), Input('session', 'value')]
+# )
 
 
-def displayClick(btn_nclicks_1, btn_nclicks_2, btn_nclicks_3):
-    figure = object
-    if "btn_nclicks_1" == ctx.triggered_id:
-        figure=fig4
-    elif "btn_nclicks_2" == ctx.triggered_id:
-        figure=fig5
-    elif "btn_nclicks_3" == ctx.triggered_id:
-        figure=geo_fig
-    return html.Div([
-        dcc.Graph(figure=figure,style={'height': '900px', 'width': '1800px'}),
-    ])
+# def displayClick(btn_nclicks_1, btn_nclicks_2, btn_nclicks_3):
+#     figure = object
+#     if "btn_nclicks_1" == ctx.triggered_id:
+#         figure=fig4
+#     elif "btn_nclicks_2" == ctx.triggered_id:
+#         figure=fig5
+#     elif "btn_nclicks_3" == ctx.triggered_id:
+#         figure=geo_fig
+#     return html.Div([
+#         dcc.Graph(figure=figure,style={'height': '900px', 'width': '1800px'}),
+#     ])
 
 
 #Funktion för att uppdatera pie chartsen när man klickar på någon av de.
-def update_pie_charts(clickData_pie_chart, checklist_values, dropdown_value, session_value):
+def update_pie_charts(clickData_pie_chart, checklist_values, session_value,btn_nclicks_1, btn_nclicks_2, btn_nclicks_3):
     global select_session
     global df
     global loss_data_df
+    figure = fig4
     if not session_value == select_session:
         select_session = session_value
         df, loss_data_df = load_session_data(session_value)
-    loss_fig = px.line(loss_data_df, title='Loss graph')
-    if dropdown_value == 'Show all':
-        updated_geo_fig = px.scatter_geo(df, lat=df['latitude'],
-                     lon=df['longitude'],
-                     color="anomaly", # which column to use to set the color of markers
-                     hover_data=['road_condition', 'scraped_weather'],
-                     projection="natural earth")
-    elif dropdown_value == 'Show inliers':
-        inliers_df = df[df['anomaly'] == 1]
-        updated_geo_fig = px.scatter_geo(inliers_df, lat=inliers_df['latitude'],
-                     lon=inliers_df['longitude'],
-                     color="anomaly", # which column to use to set the color of markers
-                     hover_data=['road_condition', 'scraped_weather'],
-                     projection="natural earth")
-    elif dropdown_value == 'Show outliers':
-        inliers_df = df[df['anomaly'] == -1]
-        updated_geo_fig = px.scatter_geo(inliers_df, lat=inliers_df['latitude'],
-                     lon=inliers_df['longitude'],
-                     color="anomaly", # which column to use to set the color of markers
-                     hover_data=['road_condition', 'scraped_weather'],
-                     projection="natural earth")
+    loss_fig = px.line(loss_data_df, title='Loss graph',labels={"index": "Epoch", "value": "Loss"})
+    loss_fig.add_trace(px.line(test_loss_data_df,color_discrete_sequence=["orange"]).data[0])
+    # if dropdown_value == 'Show all':
+    #     updated_geo_fig = px.scatter_geo(df, lat=df['latitude'],
+    #                  lon=df['longitude'],
+    #                  color="anomaly", # which column to use to set the color of markers
+    #                  hover_data=['road_condition', 'scraped_weather'],
+    #                  projection="natural earth")
+    # elif dropdown_value == 'Show inliers':
+    #     inliers_df = df[df['anomaly'] == 1]
+    #     updated_geo_fig = px.scatter_geo(inliers_df, lat=inliers_df['latitude'],
+    #                  lon=inliers_df['longitude'],
+    #                  color="anomaly", # which column to use to set the color of markers
+    #                  hover_data=['road_condition', 'scraped_weather'],
+    #                  projection="natural earth")
+    # elif dropdown_value == 'Show outliers':
+    #     inliers_df = df[df['anomaly'] == -1]
+    #     updated_geo_fig = px.scatter_geo(inliers_df, lat=inliers_df['latitude'],
+    #                  lon=inliers_df['longitude'],
+    #                  color="anomaly", # which column to use to set the color of markers
+    #                  hover_data=['road_condition', 'scraped_weather'],
+    #                  projection="natural earth")
     if len(checklist_values) == 0:
         updated_fig = px.pie(df, names=df.columns[0], title=f'Value distribution')
-        return [updated_fig, updated_geo_fig, loss_fig]
+        return [figure, updated_fig, loss_fig]
     filtered_df = pd.DataFrame()
     filtered_df['selected_values'] = df[checklist_values].apply("-".join, axis=1)
     most_represented = filtered_df['selected_values'].mode()[0]
@@ -339,8 +364,14 @@ def update_pie_charts(clickData_pie_chart, checklist_values, dropdown_value, ses
             filtered_df, 
             names='selected_values', 
             title=title
-        )   
-    return [updated_fig, updated_geo_fig, loss_fig]
+        )
+    if "btn_nclicks_1" == ctx.triggered_id:
+        figure=fig4
+    elif "btn_nclicks_2" == ctx.triggered_id:
+        figure=fig5
+    elif "btn_nclicks_3" == ctx.triggered_id:
+        figure=geo_fig  
+    return [figure, updated_fig, loss_fig]
 
     if clickData_pie_chart is not None: #Om någon piechart blivit klickad på
         print(clickData_pie_chart)
@@ -352,6 +383,17 @@ def update_pie_charts(clickData_pie_chart, checklist_values, dropdown_value, ses
     #Returnerar oavsett om någon klickats eller inte
     return updated_figs['main']
 
+# def displayClick(btn_nclicks_1, btn_nclicks_2, btn_nclicks_3):
+#     figure = object
+#     if "btn_nclicks_1" == ctx.triggered_id:
+#         figure=fig4
+#     elif "btn_nclicks_2" == ctx.triggered_id:
+#         figure=fig5
+#     elif "btn_nclicks_3" == ctx.triggered_id:
+#         figure=geo_fig
+#     return html.Div([
+#         dcc.Graph(figure=figure,style={'height': '900px', 'width': '1800px'}),
+#     ])
 
 
 if __name__ == '__main__':
