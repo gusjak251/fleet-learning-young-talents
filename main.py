@@ -20,11 +20,13 @@ from fleet_aggregators import BaseStrategy
 from data_partitioner import PartitionStrategy, partition_train_data
 
 
-GLOBAL_ROUNDS = 10 #40
+GLOBAL_ROUNDS = 40 #40
 NO_CLIENTS = 40 #40
 CLIENTS_PER_ROUND = 10 #10
-PERCENT_DATA = 0.1
+PERCENT_DATA = 0.01
 LR = 0.01
+
+PARTITION_STRATEGY = PartitionStrategy.LOCATION
 
 
 # client selection strategy
@@ -53,17 +55,21 @@ def main() -> None:
     # partitions takes the data and splits it into partitions
 
     partitions = partition_train_data(
-        PartitionStrategy.LOCATION,
+        PARTITION_STRATEGY,
         NO_CLIENTS,
         zod_frames,
         PERCENT_DATA
     )
 
+    now = datetime.now().isoformat()
+    savedir = f"sessions/session_{now}"
+    os.system(f"mkdir {savedir}")
+
     metadata = load_all_metadata(zod_frames, partitions)
 
     metadata = detect_outliers(metadata)
 
-    save_metadata(metadata)
+    save_metadata(metadata, f'{savedir}/metadata.csv')
 
     # Create path for plots
     now = datetime.now().isoformat()
@@ -128,9 +134,12 @@ def main() -> None:
         round_test_losses.append(sum(batch_test_losses)/len(batch_test_losses))
         print(f"Test loss: {round_test_losses[-1]:.4f}")
         # with global round on x-axis and round test losses y-axis
-    save_loss_data(batch_test_losses, batch_train_losses)
+    save_loss_data(batch_test_losses, batch_train_losses, PARTITION_STRATEGY, f'{savedir}/loss.json')
     plot_accuracy(batch_test_losses, batch_train_losses, round_test_losses, batch_valid_losses_plot)
     # print(batch_train_losses_plot)
+    print(batch_valid_losses_plot)
+    print()
+    print(batch_train_losses)
 
 
 
