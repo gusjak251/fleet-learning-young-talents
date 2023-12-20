@@ -103,6 +103,8 @@ The function which classifies data points is located in the module novelty_detec
 
 ## Acknowledgements
 
+To create the dashboard and graphs, we used plotly and dash. To perform clustering and outlier detection, we used the Scikit-learn library.
+
 * [Plotly](https://plotly.com/)
 * [Dash](https://dash.plotly.com/)
 * [Scikit-learn](https://flexbox.malven.co/)
