@@ -1,8 +1,6 @@
 __pycache__/
 __pycache__
 .env
-plots/**
-sessions/**
-!plots
-!sessions
+plots/*
+sessions/*
 metadata.csv
