@@ -71,6 +71,8 @@ The outliers have been identified by the isolation forest algorithm from the sci
 
 Visualization of the training loss, validation loss & test loss from the model
 
+The behaviour of the test loss graph in this image (the orange line) is not be expected. The data in the image is taken from a session which used a low percentage of the available data. Therefore, the test loss does not noteably decrease over time.
+
 *Note: validation loss is not included in this image*
 
 **To do:**
