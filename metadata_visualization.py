@@ -6,27 +6,27 @@ import os
 from dash import dcc, html, ctx, callback
 from dash.dependencies import Input, Output
 
-sessions = [folder for folder in os.listdir('sessions') if not os.path.isfile(folder)]
+# Find all sessions
+sessions = [folder for folder in os.listdir('sessions') if not os.path.isfile(folder) and os.path.isfile(f"sessions/{folder}/loss.json")]
 
+# Select the latest session
 select_session = sessions[-1]
 
+# Load metadata & loss data from a specific session
 def load_session_data(session: str):
     load_df = pd.read_csv(f'sessions/{session}/metadata.csv')
     with open(f'sessions/{session}/loss.json', 'r') as openfile:
         loss_data = json.load(openfile)
-    load_loss_data_df = pd.DataFrame({ 'Train loss': loss_data['train_loss']})
-    load_test_data_df=pd.DataFrame({"Test loss":loss_data["test_loss"]})
+    print(len(loss_data['train_loss']), len(loss_data['test_loss']))
+    load_loss_data_df = pd.DataFrame({ 'Train loss': loss_data['train_loss'] })
+    load_test_data_df=pd.DataFrame({'Test loss': loss_data["test_loss"]})
+    print(len(load_loss_data_df), len(load_test_data_df))
     return load_df, load_loss_data_df, load_test_data_df
 
 
 df, loss_data_df,test_loss_data_df = load_session_data(select_session)
-# df = pd.read_csv(f'{select_session}/metadata.csv')
-# with open(f'{select_session}/loss.json', 'r') as openfile:
-#     loss_data = json.load(openfile)
-# loss_data_df = pd.DataFrame({ 'loss': loss_data['train_loss']})
 
 loss_fig = px.line(loss_data_df, title='Loss graph',labels={"index": "Epoch", "value": "Loss"})
-loss_fig.add_trace(px.line(test_loss_data_df,color_discrete_sequence=["orange"]).data[0])
 
 # Remove unnecessary columns
 df = df.drop(columns=['time', 'frame_id'])
@@ -38,34 +38,31 @@ app = dash.Dash(__name__)
 # Create an initial pie chart
 fig = px.pie(df[df['country_code'] == 'SE'], names='road_condition', title='Metadata from cars', hole=0.3)
 
-##-----------------------------------------------------------------------------------------------------------------
-
 
 #De olika länderna
-alla_länder=[]
+all_countries=[]
 for i in df10["country_code"].unique():
-    alla_länder.append(i)
-print(alla_länder)
+    all_countries.append(i)
+print(all_countries)
 
 iso_alpha=["NOR","SWE","POL","DEU","LUX","FRA","IRL","GBR","ITA","FIN","HUN","CZE","NLD"]
 
 
 #Antal länder
-antal_länder=[]
-summa=0
-for i in alla_länder:
+num_countries=[]
+for i in all_countries:
   a=((df["country_code"]==i).sum())
-  antal_länder.append(a)
+  num_countries.append(a)
 
 
 
 
 #Anomalier
-anomaly_lista=[]
-for i in alla_länder:
+anomaly_list=[]
+for i in all_countries:
    a=df10[df["country_code"]==i]
    b=a[a["anomaly"]==-1]
-   anomaly_lista.append(len(b))
+   anomaly_list.append(len(b))
 
 
 
@@ -76,7 +73,7 @@ road_conditions_country_normal=[]
 road_conditions_country_wet=[]
 road_conditions_country_snow=[]
 
-for i in alla_länder:
+for i in all_countries:
    a=df10[df10["country_code"]==i]
    for road_cond in different_road_conditions:
      b=a[a["road_condition"]==road_cond]
@@ -94,7 +91,7 @@ road_type_higeway=[]
 road_type_aerterial_urban=[]
 road_type_city=[]
 road_type_smaller_rural=[]
-for i in alla_länder:
+for i in all_countries:
    a=df10[df10["country_code"]==i]
    for road_type in different_road_types:
        b=a[a["road_type"]==road_type]
@@ -109,7 +106,7 @@ for i in alla_länder:
        elif road_type==different_road_types[4]:
          road_type_smaller_rural.append(len(b))
 
-data={"Country":alla_länder,"Datapunkter":antal_länder,"Iso_alpha":iso_alpha,"Anomalies":anomaly_lista,"Road_condition_normal":road_conditions_country_normal,"Road_condition_wet":road_conditions_country_wet,"Road_condition_snow":road_conditions_country_snow,"Road_type_aerterial_rural":road_type_aerterial_rural,"road_type_higeway":road_type_higeway,"road_type_aerterial_urban":road_type_aerterial_urban,"road_type_city":road_type_city,"road_type_smaller_rural":road_type_smaller_rural}
+data={"Country":all_countries,"Datapunkter":num_countries,"Iso_alpha":iso_alpha,"Anomalies":anomaly_list,"Road_condition_normal":road_conditions_country_normal,"Road_condition_wet":road_conditions_country_wet,"Road_condition_snow":road_conditions_country_snow,"Road_type_aerterial_rural":road_type_aerterial_rural,"road_type_higeway":road_type_higeway,"road_type_aerterial_urban":road_type_aerterial_urban,"road_type_city":road_type_city,"road_type_smaller_rural":road_type_smaller_rural}
 df1=pd.DataFrame(data)
 
 ##----------------Antal Datapunkter per Land--------------------------------------------------------
@@ -144,9 +141,9 @@ fig4.add_annotation(
     font=dict(size=14, color="black")
 )
 
-for i in range(len(alla_länder)):
+for i in range(len(all_countries)):
    fig4.add_annotation(
-    text=(iso_alpha[i]+": "+str(antal_länder[i])),
+    text=(iso_alpha[i]+": "+str(num_countries[i])),
     x=.01,
     y=(0.95-(i/100)*8),
     showarrow=False,
@@ -154,7 +151,7 @@ for i in range(len(alla_länder)):
    )
 
 fig4.add_annotation(
-   text="Total Amount of Datapoints: "+str(sum(antal_länder)),
+   text="Total Amount of Datapoints: "+str(sum(num_countries)),
     x=.01,
     y=-.1,
     showarrow=False,
@@ -171,9 +168,9 @@ fig5.update_traces(
     text=df1['Country']
 )
 
-for i in range(len(alla_länder)):
+for i in range(len(all_countries)):
    fig5.add_annotation(
-    text=(iso_alpha[i]+": "+str(anomaly_lista[i])),
+    text=(iso_alpha[i]+": "+str(anomaly_list[i])),
     x=.01,
     y=(0.95-(i/100)*8),
     showarrow=False,
@@ -181,7 +178,7 @@ for i in range(len(alla_länder)):
    )
 
 fig5.add_annotation(
-   text="Total Amount of Anomalies: "+str(sum(anomaly_lista)),
+   text="Total Amount of Anomalies: "+str(sum(anomaly_list)),
     x=.01,
     y=-.1,
     showarrow=False,
@@ -200,9 +197,9 @@ geo_fig.update_layout(
     height=800,
 )
 
-string1=("Total Amount of Anomalies: "+str(sum(anomaly_lista)))
-string2=("Total Amount of Datapoints: "+str(sum(antal_länder)))
-kalk=(sum(anomaly_lista)/sum(antal_länder))
+string1=("Total Amount of Anomalies: "+str(sum(anomaly_list)))
+string2=("Total Amount of Datapoints: "+str(sum(num_countries)))
+kalk=(sum(anomaly_list)/sum(num_countries))
 kalk1=1-kalk
 string3=("Anomalies: "+str(kalk)+"%")
 string4=("Normal: "+str(kalk1)+"%")
@@ -255,6 +252,7 @@ app.layout = html.Div([
         dcc.Checklist(id='checklist', options=checklist_items, value=[checklist_items[0]], inline=True, style={'font-size': '16pt', 'width' : '70%', 'margin-left': 'auto', 'margin-right': 'auto', 'margin-bottom': '32px'}),
         # dcc.Dropdown(['Show all', 'Show inliers', 'Show outliers'], 'Show all', id='dropdown', style={'width': '70%', 'margin-left': 'auto', 'margin-right': 'auto', 'margin-top': '32px'}),
         # dcc.Graph(id='geo-map', figure=geo_fig),
+        dash.html.H3(children='Map type', style={'width': '70%', 'margin-left': 'auto', 'margin-right': 'auto'}),
         html.Button('Datapoints', id='btn_nclicks_1', n_clicks=0, style=button_style),
         html.Button('Anomalies per country', id='btn_nclicks_2', n_clicks=0, style=button_style),
         html.Button('Anomalies coords', id='btn_nclicks_3', n_clicks=0, style=button_style),
@@ -262,15 +260,6 @@ app.layout = html.Div([
         dcc.Graph(id='loss-graph', figure=loss_fig)
     ], style={'display': 'flex', 'flex-direction' : 'column'}),
 ])
-
-
-# @callback(
-#     Output('container-button-timestamp', 'children'),
-#     Input('btn_nclicks_1', 'n_clicks'),
-#     Input('btn_nclicks_2', 'n_clicks'),
-#     Input('btn_nclicks_3', 'n_clicks'),
-#     prevent_initial_call=True
-# )
 
 @app.callback(
     [
@@ -292,59 +281,18 @@ app.layout = html.Div([
 )
 
 
-
-
-#Callback för varje pie chart
-# @app.callback(
-#     [Output('pie-chart', 'figure'), Output('geo-map', 'figure'), Output('loss-graph', 'figure')],
-#     [Input('pie-chart', 'clickData'), Input('checklist', 'value'), Input('dropdown', 'value'), Input('session', 'value')]
-# )
-
-
-# def displayClick(btn_nclicks_1, btn_nclicks_2, btn_nclicks_3):
-#     figure = object
-#     if "btn_nclicks_1" == ctx.triggered_id:
-#         figure=fig4
-#     elif "btn_nclicks_2" == ctx.triggered_id:
-#         figure=fig5
-#     elif "btn_nclicks_3" == ctx.triggered_id:
-#         figure=geo_fig
-#     return html.Div([
-#         dcc.Graph(figure=figure,style={'height': '900px', 'width': '1800px'}),
-#     ])
-
-
 #Funktion för att uppdatera pie chartsen när man klickar på någon av de.
 def update_pie_charts(clickData_pie_chart, checklist_values, session_value,btn_nclicks_1, btn_nclicks_2, btn_nclicks_3):
     global select_session
     global df
     global loss_data_df
+    global test_loss_data_df
     figure = fig4
     if not session_value == select_session:
         select_session = session_value
-        df, loss_data_df = load_session_data(session_value)
+        df, loss_data_df, test_loss_data_df = load_session_data(session_value)
     loss_fig = px.line(loss_data_df, title='Loss graph',labels={"index": "Epoch", "value": "Loss"})
     loss_fig.add_trace(px.line(test_loss_data_df,color_discrete_sequence=["orange"]).data[0])
-    # if dropdown_value == 'Show all':
-    #     updated_geo_fig = px.scatter_geo(df, lat=df['latitude'],
-    #                  lon=df['longitude'],
-    #                  color="anomaly", # which column to use to set the color of markers
-    #                  hover_data=['road_condition', 'scraped_weather'],
-    #                  projection="natural earth")
-    # elif dropdown_value == 'Show inliers':
-    #     inliers_df = df[df['anomaly'] == 1]
-    #     updated_geo_fig = px.scatter_geo(inliers_df, lat=inliers_df['latitude'],
-    #                  lon=inliers_df['longitude'],
-    #                  color="anomaly", # which column to use to set the color of markers
-    #                  hover_data=['road_condition', 'scraped_weather'],
-    #                  projection="natural earth")
-    # elif dropdown_value == 'Show outliers':
-    #     inliers_df = df[df['anomaly'] == -1]
-    #     updated_geo_fig = px.scatter_geo(inliers_df, lat=inliers_df['latitude'],
-    #                  lon=inliers_df['longitude'],
-    #                  color="anomaly", # which column to use to set the color of markers
-    #                  hover_data=['road_condition', 'scraped_weather'],
-    #                  projection="natural earth")
     if len(checklist_values) == 0:
         updated_fig = px.pie(df, names=df.columns[0], title=f'Value distribution')
         return [figure, updated_fig, loss_fig]
@@ -379,21 +327,6 @@ def update_pie_charts(clickData_pie_chart, checklist_values, session_value,btn_n
         filtered_df = df[selected] #Nya dataframen baserat på vilket land man klickat på
         updated_fig = px.pie(filtered_df, names=df.columns, title=f'Distribution for {selected}')
         updated_figs['main'] = updated_fig
-    
-    #Returnerar oavsett om någon klickats eller inte
-    return updated_figs['main']
-
-# def displayClick(btn_nclicks_1, btn_nclicks_2, btn_nclicks_3):
-#     figure = object
-#     if "btn_nclicks_1" == ctx.triggered_id:
-#         figure=fig4
-#     elif "btn_nclicks_2" == ctx.triggered_id:
-#         figure=fig5
-#     elif "btn_nclicks_3" == ctx.triggered_id:
-#         figure=geo_fig
-#     return html.Div([
-#         dcc.Graph(figure=figure,style={'height': '900px', 'width': '1800px'}),
-#     ])
 
 
 if __name__ == '__main__':
